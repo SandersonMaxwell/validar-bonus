@@ -17,7 +17,7 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file)
 
     # Verifica se as colunas necessárias existem
-    required_cols = {'Client ID', 'Accrual Date', 'Bonus Amount'}
+    required_cols = {'Client ID', 'Accrual Date', 'bonus Amount'}
     if not required_cols.issubset(df.columns):
         st.error("O CSV precisa conter as colunas: 'Client ID', 'Accrual Date' e 'Bonus Amount'.")
     else:
@@ -33,7 +33,7 @@ if uploaded_file:
 
             # Mantém apenas as colunas necessárias e ordena
             duplicated = (
-                duplicated[['Client ID', 'Accrual Date', 'Bonus Amount']]
+                duplicated[['Client ID', 'Accrual Date', 'bonus Amount']]
                 .sort_values(by=['Client ID', 'Accrual Date'], ascending=True)
                 .reset_index(drop=True)
             )
