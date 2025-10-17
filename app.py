@@ -14,7 +14,7 @@ if uploaded_file:
 
     # Verifica colunas esperadas
     if 'Client ID' not in df.columns:
-        st.error("CSV precisa conter as colunas 'Client ID')
+        st.error(CSV precisa conter as colunas 'Client ID')
     else:
         st.success("CSV carregado com sucesso!")
 
