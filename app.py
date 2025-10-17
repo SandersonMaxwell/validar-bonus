@@ -2,40 +2,49 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
-st.set_page_config(page_title="Validação de Bônus", layout="wide")
+st.set_page_config(page_title="Validação de Duplicados", layout="wide")
 
-st.title("Validação de IDs de Jogadores e Data de Bônus")
+st.title("🔍 Validação de IDs Duplicados - Bônus")
+
+st.write("Envie um arquivo CSV contendo as colunas **Client ID** e **Accrual Date** para verificar duplicidades de clientes.")
 
 # Upload do CSV
-uploaded_file = st.file_uploader("Escolha um arquivo CSV", type="csv")
+uploaded_file = st.file_uploader("Escolha o arquivo CSV", type="csv")
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
 
-    # Verifica colunas esperadas
-    if 'Client ID' not in df.columns:
-        st.error(CSV precisa conter as colunas 'Client ID')
+    # Verifica colunas necessárias
+    if 'Client ID' not in df.columns or 'Accrual Date' not in df.columns:
+        st.error("O CSV precisa conter as colunas 'Client ID' e 'Accrual Date'.")
     else:
-        st.success("CSV carregado com sucesso!")
+        st.success("✅ CSV carregado com sucesso!")
 
-        # Duplicados
-        duplicates = df[df.duplicated(subset=['Client ID'], keep=False)]
+        # Identificar duplicados com base apenas no Client ID
+        duplicated_ids = df[df.duplicated(subset=['Client ID'], keep=False)]
 
-        if duplicates.empty:
-            st.info("Nenhum jogador duplicado encontrado com a mesma data de bônus!")
+        if duplicated_ids.empty:
+            st.info("🎉 Nenhum ID duplicado encontrado!")
         else:
-            st.warning(f"Foram encontrados {duplicates['Client ID'].nunique()} jogadores com IDs duplicados!")
-            st.dataframe(duplicates)
+            st.warning(f"⚠️ Foram encontrados {duplicated_ids['Client ID'].nunique()} IDs de clientes duplicados!")
 
-            # Visualização: quantidade de duplicados por data
-            chart_data = duplicates.groupby('Accrual Date')['Client ID'].nunique().reset_index()
-            chart_data.rename(columns={'Client ID': 'duplicated_players'}, inplace=True)
+            # Exibe tabela com os duplicados
+            st.subheader("📋 Lista de IDs Duplicados")
+            st.dataframe(duplicated_ids)
 
-            st.subheader("Duplicados por Data de Bônus")
-            chart = alt.Chart(chart_data).mark_bar().encode(
-                x='Accrual Date',
-                y='duplicated_players',
-                tooltip=['Accrual Date', 'duplicated_players']
+            # Quantidade de duplicações por ID
+            duplicates_count = (
+                duplicated_ids.groupby('Client ID')
+                .size()
+                .reset_index(name='Ocorrências')
+                .sort_values(by='Ocorrências', ascending=False)
             )
-            st.altair_chart(chart, use_container_width=True)
 
+            st.subheader("📊 Quantidade de Ocorrências por Client ID")
+            chart = alt.Chart(duplicates_count).mark_bar().encode(
+                x=alt.X('Client ID:N', sort='-y'),
+                y='Ocorrências:Q',
+                tooltip=['Client ID', 'Ocorrências']
+            ).properties(height=400)
+            
+            st.altair_chart(chart, use_container_width=True)
