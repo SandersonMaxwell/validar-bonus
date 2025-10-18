@@ -12,7 +12,7 @@ modo = st.sidebar.radio(
 )
 
 st.sidebar.write("---")
-st.sidebar.info("Certifique-se de que seu CSV contém as colunas: **Client ID**, **Accrual Date** e **bonus Amount**.")
+st.sidebar.info("As colunas esperadas são: **Client ID**, **Accrual Date** e **bonus Amount**.")
 
 def validar_colunas(df):
     required_cols = {'Client ID', 'Accrual Date', 'bonus Amount'}
@@ -39,7 +39,11 @@ if modo == "Verificar Duplicados":
             if duplicated.empty:
                 st.info("🎉 Nenhum ID duplicado encontrado!")
             else:
-                st.warning(f"⚠️ Foram encontrados {duplicated['Client ID'].nunique()} IDs de clientes duplicados!")
+                total = len(df)
+                dup_total = duplicated['Client ID'].nunique()
+                perc = round((dup_total / total) * 100, 2)
+
+                st.warning(f"⚠️ Foram encontrados {dup_total} IDs duplicados ({perc}% do total).")
 
                 duplicated = (
                     duplicated[['Client ID', 'Accrual Date', 'bonus Amount']]
@@ -76,31 +80,50 @@ elif modo == "Comparar Dois Arquivos":
         else:
             st.success("✅ Ambos os arquivos carregados com sucesso!")
 
-            # IDs em comum
-            common_ids = pd.merge(df1, df2, on='Client ID', suffixes=('_File1', '_File2'))
+            # IDs únicos
+            ids1 = set(df1['Client ID'])
+            ids2 = set(df2['Client ID'])
 
-            if common_ids.empty:
-                st.info("✅ Nenhum ID em comum encontrado entre os dois arquivos.")
-            else:
-                st.warning(f"⚠️ Encontrados {common_ids['Client ID'].nunique()} IDs presentes em ambos os arquivos!")
+            # Classificar origem de cada ID
+            ids_ambos = ids1.intersection(ids2)
+            ids_apenas_1 = ids1 - ids2
+            ids_apenas_2 = ids2 - ids1
 
-                resultado = (
-                    common_ids[['Client ID', 'Accrual Date_File1', 'bonus Amount_File1',
-                                'Accrual Date_File2', 'bonus Amount_File2']]
-                    .sort_values(by='Client ID')
-                    .reset_index(drop=True)
-                )
+            # Criar dataframe consolidado
+            lista = []
 
-                st.subheader("📋 IDs que aparecem em ambos os arquivos")
-                st.dataframe(resultado, use_container_width=True)
+            for i in ids_ambos:
+                lista.append({"Client ID": i, "Origem": "Ambas"})
+            for i in ids_apenas_1:
+                lista.append({"Client ID": i, "Origem": "Planilha 1"})
+            for i in ids_apenas_2:
+                lista.append({"Client ID": i, "Origem": "Planilha 2"})
 
-                csv_download = resultado.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="💾 Baixar relatório de IDs em comum (CSV)",
-                    data=csv_download,
-                    file_name="common_clients.csv",
-                    mime="text/csv"
-                )
+            resultado = pd.DataFrame(lista).sort_values(by="Client ID").reset_index(drop=True)
+
+            st.subheader("📋 Resultado da Comparação")
+            st.dataframe(resultado, use_container_width=True)
+
+            total_1 = len(df1)
+            total_2 = len(df2)
+            total_comum = len(ids_ambos)
+            perc_comum = round((total_comum / ((len(ids1 | ids2))) * 100), 2)
+
+            st.markdown(f"""
+            - 📄 **Planilha 1:** {total_1} registros  
+            - 📄 **Planilha 2:** {total_2} registros  
+            - 🔁 **IDs em comum:** {total_comum}  
+            - 📊 **Percentual de IDs em comum:** {perc_comum}%
+            """)
+
+            # Baixar CSV
+            csv_download = resultado.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="💾 Baixar relatório de comparação (CSV)",
+                data=csv_download,
+                file_name="comparacao_ids.csv",
+                mime="text/csv"
+            )
 
     else:
         st.info("👆 Envie os dois arquivos CSV para comparar.")
