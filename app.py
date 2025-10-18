@@ -80,50 +80,39 @@ elif modo == "Comparar Dois Arquivos":
         else:
             st.success("✅ Ambos os arquivos carregados com sucesso!")
 
-            # IDs únicos
-            ids1 = set(df1['Client ID'])
-            ids2 = set(df2['Client ID'])
+            # IDs em comum
+            ids_comuns = set(df1['Client ID']).intersection(set(df2['Client ID']))
 
-            # Classificar origem de cada ID
-            ids_ambos = ids1.intersection(ids2)
-            ids_apenas_1 = ids1 - ids2
-            ids_apenas_2 = ids2 - ids1
+            if not ids_comuns:
+                st.info("🎉 Nenhum ID em comum foi encontrado entre as duas planilhas.")
+            else:
+                # Filtra apenas IDs em comum
+                df1_common = df1[df1['Client ID'].isin(ids_comuns)].copy()
+                df2_common = df2[df2['Client ID'].isin(ids_comuns)].copy()
 
-            # Criar dataframe consolidado
-            lista = []
+                # Adiciona coluna indicando origem
+                df1_common["Origem"] = "Planilha 1"
+                df2_common["Origem"] = "Planilha 2"
 
-            for i in ids_ambos:
-                lista.append({"Client ID": i, "Origem": "Ambas"})
-            for i in ids_apenas_1:
-                lista.append({"Client ID": i, "Origem": "Planilha 1"})
-            for i in ids_apenas_2:
-                lista.append({"Client ID": i, "Origem": "Planilha 2"})
+                # Junta os dois dataframes
+                resultado = pd.concat([df1_common, df2_common], ignore_index=True)
 
-            resultado = pd.DataFrame(lista).sort_values(by="Client ID").reset_index(drop=True)
+                resultado = resultado[['Client ID', 'Accrual Date', 'bonus Amount', 'Origem']] \
+                    .sort_values(by=['Client ID', 'Origem', 'Accrual Date']) \
+                    .reset_index(drop=True)
 
-            st.subheader("📋 Resultado da Comparação")
-            st.dataframe(resultado, use_container_width=True)
+                st.subheader("📋 IDs encontrados em ambas as planilhas")
+                st.dataframe(resultado, use_container_width=True)
 
-            total_1 = len(df1)
-            total_2 = len(df2)
-            total_comum = len(ids_ambos)
-            perc_comum = round((total_comum / ((len(ids1 | ids2))) * 100), 2)
+                st.markdown(f"**Total de IDs em comum:** {len(ids_comuns)}")
 
-            st.markdown(f"""
-            - 📄 **Planilha 1:** {total_1} registros  
-            - 📄 **Planilha 2:** {total_2} registros  
-            - 🔁 **IDs em comum:** {total_comum}  
-            - 📊 **Percentual de IDs em comum:** {perc_comum}%
-            """)
-
-            # Baixar CSV
-            csv_download = resultado.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="💾 Baixar relatório de comparação (CSV)",
-                data=csv_download,
-                file_name="comparacao_ids.csv",
-                mime="text/csv"
-            )
-
+                # Baixar CSV
+                csv_download = resultado.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="💾 Baixar relatório de IDs em comum (CSV)",
+                    data=csv_download,
+                    file_name="ids_em_comum.csv",
+                    mime="text/csv"
+                )
     else:
         st.info("👆 Envie os dois arquivos CSV para comparar.")
